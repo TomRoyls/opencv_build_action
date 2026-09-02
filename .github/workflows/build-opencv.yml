@@ -362,6 +362,9 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+          # archive:false artifacts: keep original zip/tar.gz files - v8 would otherwise extract the zips
+          # and dist/* would contain directories, which breaks gh release upload
+          skip-decompress: true
 
       - name: Create release and upload artifacts
         env:
@@ -371,4 +374,4 @@ jobs:
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "OpenCV $TAG" --generate-notes
           fi
-          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$TAG" dist/opencv-* --repo "$GITHUB_REPOSITORY" --clobber
