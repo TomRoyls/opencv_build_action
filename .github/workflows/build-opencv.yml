@@ -76,6 +76,12 @@ jobs:
             -DWITH_FLATBUFFERS=OFF \
             -DWITH_UNIFONT=OFF \
             -DWITH_OPENEXR=OFF \
+            -DWITH_JPEG=OFF \
+            -DWITH_PNG=OFF \
+            -DWITH_TIFF=OFF \
+            -DWITH_WEBP=OFF \
+            -DWITH_OPENJPEG=OFF \
+            -DWITH_JPEGXL=OFF \
             -DWITH_JASPER=OFF \
             -DWITH_AVIF=OFF \
             -DWITH_VTK=OFF \
@@ -160,7 +166,9 @@ jobs:
             --without ptcloud \
             --disable cuda --disable ipp --disable itt --disable opencl --disable eigen \
             --disable lapack --disable tbb --disable protobuf --disable flatbuffers \
-            --disable unifont --disable openexr
+            --disable unifont --disable openexr \
+            --disable jpeg --disable png --disable tiff --disable webp \
+            --disable openjpeg --disable jpegxl
 
       - name: Package
         shell: bash
@@ -211,6 +219,12 @@ jobs:
             -DWITH_FLATBUFFERS=OFF \
             -DWITH_UNIFONT=OFF \
             -DWITH_OPENEXR=OFF \
+            -DWITH_JPEG=OFF \
+            -DWITH_PNG=OFF \
+            -DWITH_TIFF=OFF \
+            -DWITH_WEBP=OFF \
+            -DWITH_OPENJPEG=OFF \
+            -DWITH_JPEGXL=OFF \
             -DWITH_JASPER=OFF \
             -DWITH_AVIF=OFF \
             -DWITH_VTK=OFF \
@@ -294,6 +308,12 @@ jobs:
             -DWITH_FLATBUFFERS=OFF \
             -DWITH_UNIFONT=OFF \
             -DWITH_OPENEXR=OFF \
+            -DWITH_JPEG=OFF \
+            -DWITH_PNG=OFF \
+            -DWITH_TIFF=OFF \
+            -DWITH_WEBP=OFF \
+            -DWITH_OPENJPEG=OFF \
+            -DWITH_JPEGXL=OFF \
             -DWITH_JASPER=OFF \
             -DWITH_AVIF=OFF \
             -DWITH_VTK=OFF \
