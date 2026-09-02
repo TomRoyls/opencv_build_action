@@ -27,7 +27,8 @@ env:
 jobs:
   windows:
     name: windows (${{ matrix.crt }})
-    runs-on: windows-latest
+    # windows-latest now maps to a VS2026-only image (no VS2022 instance); pin the VS2022 image
+    runs-on: windows-2025
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +71,9 @@ jobs:
             -DWITH_UNIFONT=OFF \
             -DWITH_OPENEXR=OFF \
             -DWITH_JASPER=OFF \
+            -DWITH_AVIF=OFF \
+            -DWITH_VTK=OFF \
+            -DWITH_GTK=OFF \
             -DWITH_TESSERACT=OFF \
             -DWITH_FFMPEG=OFF \
             -DWITH_GSTREAMER=OFF \
@@ -111,6 +115,8 @@ jobs:
         run: |
           git clone --depth 1 --branch "$OPENCV_REF" https://github.com/opencv/opencv.git opencv
           git clone --depth 1 --branch "$CONTRIB_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+          # build_framework.py requires a named branch (git branch --show-current); tag clones are detached HEAD
+          git -C opencv checkout -B ci-build
 
       # ml moved to contrib in 5.x; the Apple framework scripts have a fixed CMake arg list (no -D passthrough), so vendor the module into the main tree instead
       - name: Vendor ml module into main tree
@@ -186,6 +192,9 @@ jobs:
             -DWITH_UNIFONT=OFF \
             -DWITH_OPENEXR=OFF \
             -DWITH_JASPER=OFF \
+            -DWITH_AVIF=OFF \
+            -DWITH_VTK=OFF \
+            -DWITH_GTK=OFF \
             -DWITH_TESSERACT=OFF \
             -DWITH_FFMPEG=OFF \
             -DWITH_GSTREAMER=OFF \
@@ -238,6 +247,7 @@ jobs:
             -DANDROID_PLATFORM=android-24 \
             -DANDROID_STL=c++_static \
             -DBUILD_ANDROID_PROJECTS=OFF \
+            -DBUILD_ANDROID_EXAMPLES=OFF \
             -DBUILD_KOTLIN_EXTENSIONS=OFF \
             -DINSTALL_CREATE_DISTRIB=ON \
             -DBUILD_SHARED_LIBS=OFF \
@@ -263,6 +273,9 @@ jobs:
             -DWITH_UNIFONT=OFF \
             -DWITH_OPENEXR=OFF \
             -DWITH_JASPER=OFF \
+            -DWITH_AVIF=OFF \
+            -DWITH_VTK=OFF \
+            -DWITH_GTK=OFF \
             -DWITH_TESSERACT=OFF \
             -DWITH_FFMPEG=OFF \
             -DWITH_GSTREAMER=OFF \
