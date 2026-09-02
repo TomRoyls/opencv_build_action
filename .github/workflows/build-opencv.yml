@@ -1,0 +1,294 @@
+name: "Build OpenCV"
+
+on:
+  workflow_dispatch:
+    inputs:
+      opencv_ref:
+        description: "OpenCV tag to build"
+        default: "5.0.0"
+        type: string
+  push:
+    tags:
+      - "opencv-*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENCV_REF: ${{ inputs.opencv_ref || '5.0.0' }}
+  CONTRIB_REF: ${{ inputs.opencv_ref || '5.0.0' }}
+  # 5.0.0 module names. geometry+stereo are auto-deps of imgproc/calib but listed explicitly; ml comes from opencv_contrib
+  BUILD_MODULES: "core,imgproc,flann,geometry,features,calib,stereo,photo,stitching,video,objdetect,ml"
+
+jobs:
+  windows:
+    name: windows (${{ matrix.crt }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crt: [mt, md]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sources
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$OPENCV_REF" https://github.com/opencv/opencv.git opencv
+          git clone --depth 1 --branch "$CONTRIB_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+
+      - name: Configure
+        shell: bash
+        env:
+          CRT_FLAG: ${{ matrix.crt == 'mt' && 'ON' || 'OFF' }}
+        run: |
+          cmake -S opencv -B build -G "Visual Studio 17 2022" -A x64 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_LIST=$BUILD_MODULES \
+            -DOPENCV_EXTRA_MODULES_PATH=$GITHUB_WORKSPACE/opencv_contrib/modules \
+            -DBUILD_opencv_world=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_PERF_TESTS=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_DOCS=OFF \
+            -DBUILD_opencv_apps=OFF \
+            -DBUILD_JAVA=OFF \
+            -DWITH_CUDA=OFF \
+            -DWITH_OPENCL=OFF \
+            -DWITH_IPP=OFF \
+            -DWITH_ITT=OFF \
+            -DWITH_EIGEN=OFF \
+            -DWITH_LAPACK=OFF \
+            -DWITH_TBB=OFF \
+            -DWITH_OPENMP=OFF \
+            -DWITH_PROTOBUF=OFF \
+            -DWITH_FLATBUFFERS=OFF \
+            -DWITH_UNIFONT=OFF \
+            -DWITH_OPENEXR=OFF \
+            -DWITH_JASPER=OFF \
+            -DWITH_TESSERACT=OFF \
+            -DWITH_FFMPEG=OFF \
+            -DWITH_GSTREAMER=OFF \
+            -DWITH_1394=OFF \
+            -DWITH_VA=OFF \
+            -DWITH_VA_INTEL=OFF \
+            -DWITH_OPENCLAMDFFT=OFF \
+            -DWITH_OPENCLAMDBLAS=OFF \
+            -DENABLE_CONFIG_VERIFICATION=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install \
+            -DBUILD_WITH_STATIC_CRT=$CRT_FLAG
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --parallel
+
+      - name: Install
+        shell: bash
+        run: cmake --install build --config Release
+
+      - name: Package
+        shell: bash
+        run: cd install && 7z a -tzip ../opencv-${OPENCV_REF}-windows-x64-${{ matrix.crt }}.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-${{ env.OPENCV_REF }}-windows-x64-${{ matrix.crt }}
+          path: opencv-*.zip
+
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sources
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$OPENCV_REF" https://github.com/opencv/opencv.git opencv
+          git clone --depth 1 --branch "$CONTRIB_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+
+      # ml moved to contrib in 5.x; the Apple framework scripts have a fixed CMake arg list (no -D passthrough), so vendor the module into the main tree instead
+      - name: Vendor ml module into main tree
+        shell: bash
+        run: cp -R opencv_contrib/modules/ml opencv/modules/ml
+
+      - name: Build xcframework
+        shell: bash
+        run: |
+          # static by default (APPLE_FRAMEWORK forces BUILD_SHARED_LIBS=OFF; all module .a merged via libtool into opencv2.framework)
+          # NOTE: opencv_world is force-ON under APPLE_FRAMEWORK — expected, harmless for static packaging
+          # --without X => BUILD_opencv_X=OFF; --disable X => WITH_X=OFF (only injection path these scripts support)
+          python3 opencv/platforms/apple/build_xcframework.py \
+            --out "$GITHUB_WORKSPACE/out" \
+            --build_only_specified_archs \
+            --iphoneos_archs arm64 \
+            --iphonesimulator_archs arm64 \
+            --macos_archs arm64 \
+            --iphoneos_deployment_target 16.0 \
+            --macosx_deployment_target 14.0 \
+            --without dnn --without imgcodecs --without videoio --without highgui \
+            --without objc --without java --without js --without python --without ts \
+            --without ptcloud \
+            --disable cuda --disable ipp --disable itt --disable opencl --disable eigen \
+            --disable lapack --disable tbb --disable protobuf --disable flatbuffers \
+            --disable unifont --disable openexr
+
+      - name: Package
+        shell: bash
+        run: ditto -c -k --sequesterRsrc --keepParent out/opencv2.xcframework opencv-${OPENCV_REF}-apple-arm64-xcframework.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-${{ env.OPENCV_REF }}-apple-arm64-xcframework
+          path: opencv-*-xcframework.zip
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sources
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$OPENCV_REF" https://github.com/opencv/opencv.git opencv
+          git clone --depth 1 --branch "$CONTRIB_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S opencv -B build -G Ninja \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_LIST=$BUILD_MODULES \
+            -DOPENCV_EXTRA_MODULES_PATH=$GITHUB_WORKSPACE/opencv_contrib/modules \
+            -DBUILD_opencv_world=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_PERF_TESTS=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_DOCS=OFF \
+            -DBUILD_opencv_apps=OFF \
+            -DBUILD_JAVA=OFF \
+            -DWITH_CUDA=OFF \
+            -DWITH_OPENCL=OFF \
+            -DWITH_IPP=OFF \
+            -DWITH_ITT=OFF \
+            -DWITH_EIGEN=OFF \
+            -DWITH_LAPACK=OFF \
+            -DWITH_TBB=OFF \
+            -DWITH_OPENMP=OFF \
+            -DWITH_PROTOBUF=OFF \
+            -DWITH_FLATBUFFERS=OFF \
+            -DWITH_UNIFONT=OFF \
+            -DWITH_OPENEXR=OFF \
+            -DWITH_JASPER=OFF \
+            -DWITH_TESSERACT=OFF \
+            -DWITH_FFMPEG=OFF \
+            -DWITH_GSTREAMER=OFF \
+            -DWITH_1394=OFF \
+            -DWITH_VA=OFF \
+            -DWITH_VA_INTEL=OFF \
+            -DWITH_OPENCLAMDFFT=OFF \
+            -DWITH_OPENCLAMDBLAS=OFF \
+            -DENABLE_CONFIG_VERIFICATION=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --parallel
+
+      - name: Install
+        shell: bash
+        run: cmake --install build
+
+      # Built on ubuntu-24.04 (glibc 2.39): consumers must link on glibc >= 2.39
+      - name: Package
+        shell: bash
+        run: cd install && tar czf ../opencv-${OPENCV_REF}-linux-x64.tar.gz .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-${{ env.OPENCV_REF }}-linux-x64
+          path: opencv-*.tar.gz
+
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sources
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$OPENCV_REF" https://github.com/opencv/opencv.git opencv
+          git clone --depth 1 --branch "$CONTRIB_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+
+      # ANDROID_NDK env var is pre-set on GitHub ubuntu runners (NDK 27.x); static libs land in install/sdk/native/staticlibs/arm64-v8a/
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S opencv -B build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DANDROID_STL=c++_static \
+            -DBUILD_ANDROID_PROJECTS=OFF \
+            -DBUILD_KOTLIN_EXTENSIONS=OFF \
+            -DINSTALL_CREATE_DISTRIB=ON \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_LIST=$BUILD_MODULES \
+            -DOPENCV_EXTRA_MODULES_PATH=$GITHUB_WORKSPACE/opencv_contrib/modules \
+            -DBUILD_opencv_world=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_PERF_TESTS=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_DOCS=OFF \
+            -DBUILD_opencv_apps=OFF \
+            -DBUILD_JAVA=OFF \
+            -DWITH_CUDA=OFF \
+            -DWITH_OPENCL=OFF \
+            -DWITH_IPP=OFF \
+            -DWITH_ITT=OFF \
+            -DWITH_EIGEN=OFF \
+            -DWITH_LAPACK=OFF \
+            -DWITH_TBB=OFF \
+            -DWITH_OPENMP=OFF \
+            -DWITH_PROTOBUF=OFF \
+            -DWITH_FLATBUFFERS=OFF \
+            -DWITH_UNIFONT=OFF \
+            -DWITH_OPENEXR=OFF \
+            -DWITH_JASPER=OFF \
+            -DWITH_TESSERACT=OFF \
+            -DWITH_FFMPEG=OFF \
+            -DWITH_GSTREAMER=OFF \
+            -DWITH_1394=OFF \
+            -DWITH_VA=OFF \
+            -DWITH_VA_INTEL=OFF \
+            -DWITH_OPENCLAMDFFT=OFF \
+            -DWITH_OPENCLAMDBLAS=OFF \
+            -DENABLE_CONFIG_VERIFICATION=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --parallel
+
+      - name: Install
+        shell: bash
+        run: cmake --install build
+
+      - name: Package
+        shell: bash
+        run: cd install && tar czf ../opencv-${OPENCV_REF}-android-arm64-v8a.tar.gz .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-${{ env.OPENCV_REF }}-android-arm64-v8a
+          path: opencv-*.tar.gz
