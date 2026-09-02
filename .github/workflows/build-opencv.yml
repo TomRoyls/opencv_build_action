@@ -90,6 +90,8 @@ jobs:
             -DENABLE_CONFIG_VERIFICATION=ON \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install \
+            -DWITH_PTHREADS_PF=OFF \
+            -DWITH_OPENCL_D3D11_NV=OFF \
             -DBUILD_WITH_STATIC_CRT=$CRT_FLAG
 
       - name: Build
