@@ -21,8 +21,9 @@ All five are attached to each [release](../../releases).
 ## Module set
 
 Built: `core imgproc flann geometry features calib stereo photo stitching video
-objdetect ml` (names follow OpenCV 5.x: `features2d` → `features`,
-`calib3d` → `calib`; `ml` comes from `opencv_contrib`).
+objdetect ml xphoto` (names follow OpenCV 5.x: `features2d` → `features`,
+`calib3d` → `calib`; `ml` and `xphoto` come from `opencv_contrib`; `aruco`
+ships inside `objdetect`).
 
 Excluded: `imgcodecs`, `videoio`, `highgui`, `dnn`, `ptcloud`, `ts`, all
 bindings (Java/Python/ObjC/JS), `world`. Also off: CUDA, OpenCL, IPP, ITT,

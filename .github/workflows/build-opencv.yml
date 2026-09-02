@@ -21,8 +21,8 @@ concurrency:
 
 env:
   OPENCV_REF: ${{ inputs.opencv_ref || github.ref_name || '5.0.0' }}
-  # 5.0.0 module names. geometry+stereo are auto-deps of imgproc/calib but listed explicitly; ml comes from opencv_contrib
-  BUILD_MODULES: "core,imgproc,flann,geometry,features,calib,stereo,photo,stitching,video,objdetect,ml"
+  # 5.0.0 module names. geometry+stereo are auto-deps of imgproc/calib but listed explicitly; ml+xphoto come from opencv_contrib (aruco ships inside objdetect)
+  BUILD_MODULES: "core,imgproc,flann,geometry,features,calib,stereo,photo,stitching,video,objdetect,ml,xphoto"
 
 jobs:
   windows:
@@ -129,10 +129,12 @@ jobs:
           # build_framework.py requires a named branch (git branch --show-current); tag clones are detached HEAD
           git -C opencv checkout -B ci-build
 
-      # ml moved to contrib in 5.x; the Apple framework scripts have a fixed CMake arg list (no -D passthrough), so vendor the module into the main tree instead
-      - name: Vendor ml module into main tree
+      # contrib modules are not reachable via the Apple scripts (fixed CMake arg list, no -D passthrough) - vendor them into the main tree
+      - name: Vendor contrib modules into main tree
         shell: bash
-        run: cp -R opencv_contrib/modules/ml opencv/modules/ml
+        run: |
+          cp -R opencv_contrib/modules/ml opencv/modules/ml
+          cp -R opencv_contrib/modules/xphoto opencv/modules/xphoto
 
       # build_xcframework.py phase 3 unconditionally copytrees <platform>/docs; --without objc skips doc generation
       - name: Pre-create docs dirs for xcframework script
