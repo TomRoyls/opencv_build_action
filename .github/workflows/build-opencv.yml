@@ -27,14 +27,19 @@ env:
 jobs:
   windows:
     name: windows (${{ matrix.crt }})
-    # windows-latest now maps to a VS2026-only image (no VS2022 instance); pin the VS2022 image
-    runs-on: windows-2025
+    # all hosted windows images now ship VS2026 only - use Ninja + MSVC dev env instead of a VS generator
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         crt: [mt, md]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
       - name: Fetch sources
         shell: bash
@@ -47,7 +52,7 @@ jobs:
         env:
           CRT_FLAG: ${{ matrix.crt == 'mt' && 'ON' || 'OFF' }}
         run: |
-          cmake -S opencv -B build -G "Visual Studio 17 2022" -A x64 \
+          cmake -S opencv -B build -G Ninja \
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_LIST=$BUILD_MODULES \
             -DOPENCV_EXTRA_MODULES_PATH=$GITHUB_WORKSPACE/opencv_contrib/modules \
@@ -122,6 +127,11 @@ jobs:
       - name: Vendor ml module into main tree
         shell: bash
         run: cp -R opencv_contrib/modules/ml opencv/modules/ml
+
+      # build_xcframework.py phase 3 unconditionally copytrees <platform>/docs; --without objc skips doc generation
+      - name: Pre-create docs dirs for xcframework script
+        shell: bash
+        run: mkdir -p out/iphoneos/docs out/iphonesimulator/docs out/macos/docs
 
       - name: Build xcframework
         shell: bash
