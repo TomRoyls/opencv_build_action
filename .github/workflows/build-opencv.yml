@@ -188,7 +188,7 @@ jobs:
             --disable TBB --disable PROTOBUF --disable FLATBUFFERS \
             --disable UNIFONT --disable OPENEXR \
             --disable JPEG --disable PNG --disable TIFF --disable WEBP \
-            --disable OPENJPEG --disable JPEGXL
+            --disable OPENJPEG --disable JPEGXL --disable JASPER
 
       - name: Package
         shell: bash
