@@ -47,6 +47,7 @@ jobs:
           OPENCV_CLONE_REF="${OPENCV_REF%%-r*}"
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv.git opencv
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+          git clone --depth 1 --branch 3.4.0 https://gitlab.com/libeigen/eigen.git eigen
 
       - name: Configure
         shell: bash
@@ -68,7 +69,9 @@ jobs:
             -DWITH_OPENCL=OFF \
             -DWITH_IPP=OFF \
             -DWITH_ITT=OFF \
-            -DWITH_EIGEN=OFF \
+            -DWITH_EIGEN=ON \
+            -DEIGEN_INCLUDE_PATH:PATH=$GITHUB_WORKSPACE/eigen \
+            -DCMAKE_DISABLE_FIND_PACKAGE_Eigen3=ON \
             -DWITH_LAPACK=OFF \
             -DWITH_TBB=OFF \
             -DWITH_OPENMP=OFF \
@@ -132,6 +135,7 @@ jobs:
           OPENCV_CLONE_REF="${OPENCV_REF%%-r*}"
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv.git opencv
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+          git clone --depth 1 --branch 3.4.0 https://gitlab.com/libeigen/eigen.git eigen
           # build_framework.py requires a named branch (git branch --show-current); tag clones are detached HEAD
           git -C opencv checkout -B ci-build
 
@@ -150,6 +154,22 @@ jobs:
       - name: Build xcframework
         shell: bash
         run: |
+          # OpenCV's apple scripts pass feature names verbatim into -DWITH_<name>=OFF and CMake vars
+          # are case-sensitive: feature names MUST be uppercase or they are silently ignored
+          # (Eigen is NOT disabled here - it is injected via the cmake shim below)
+          # shim cmake: the scripts accept no arbitrary cmake args, so inject Eigen via PATH wrapper
+          REAL_CMAKE="$(command -v cmake)"
+          mkdir -p cmake-shim
+          cat > cmake-shim/cmake <<EOF
+          #!/bin/bash
+          # inject extra defines only for configure invocations (source dir is the last argument)
+          if [ \$# -gt 0 ] && [ -d "\${@: -1}" ]; then
+            exec "$REAL_CMAKE" "\$@" -DWITH_EIGEN=ON "-DEIGEN_INCLUDE_PATH:PATH=$GITHUB_WORKSPACE/eigen" -DCMAKE_DISABLE_FIND_PACKAGE_Eigen3=ON
+          fi
+          exec "$REAL_CMAKE" "\$@"
+          EOF
+          chmod +x cmake-shim/cmake
+          export PATH="$GITHUB_WORKSPACE/cmake-shim:$PATH"
           # static by default (APPLE_FRAMEWORK forces BUILD_SHARED_LIBS=OFF; all module .a merged via libtool into opencv2.framework)
           # NOTE: opencv_world is force-ON under APPLE_FRAMEWORK — expected, harmless for static packaging
           # --without X => BUILD_opencv_X=OFF; --disable X => WITH_X=OFF (only injection path these scripts support)
@@ -164,11 +184,11 @@ jobs:
             --without dnn --without imgcodecs --without videoio --without highgui \
             --without objc --without java --without js --without python --without ts \
             --without ptcloud \
-            --disable cuda --disable ipp --disable itt --disable opencl --disable eigen \
-            --disable lapack --disable tbb --disable protobuf --disable flatbuffers \
-            --disable unifont --disable openexr \
-            --disable jpeg --disable png --disable tiff --disable webp \
-            --disable openjpeg --disable jpegxl
+            --disable CUDA --disable IPP --disable ITT --disable OPENCL --disable LAPACK \
+            --disable TBB --disable PROTOBUF --disable FLATBUFFERS \
+            --disable UNIFONT --disable OPENEXR \
+            --disable JPEG --disable PNG --disable TIFF --disable WEBP \
+            --disable OPENJPEG --disable JPEGXL
 
       - name: Package
         shell: bash
@@ -192,6 +212,7 @@ jobs:
           OPENCV_CLONE_REF="${OPENCV_REF%%-r*}"
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv.git opencv
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+          git clone --depth 1 --branch 3.4.0 https://gitlab.com/libeigen/eigen.git eigen
 
       - name: Configure
         shell: bash
@@ -211,7 +232,9 @@ jobs:
             -DWITH_OPENCL=OFF \
             -DWITH_IPP=OFF \
             -DWITH_ITT=OFF \
-            -DWITH_EIGEN=OFF \
+            -DWITH_EIGEN=ON \
+            -DEIGEN_INCLUDE_PATH:PATH=$GITHUB_WORKSPACE/eigen \
+            -DCMAKE_DISABLE_FIND_PACKAGE_Eigen3=ON \
             -DWITH_LAPACK=OFF \
             -DWITH_TBB=OFF \
             -DWITH_OPENMP=OFF \
@@ -272,6 +295,7 @@ jobs:
           OPENCV_CLONE_REF="${OPENCV_REF%%-r*}"
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv.git opencv
           git clone --depth 1 --branch "$OPENCV_CLONE_REF" https://github.com/opencv/opencv_contrib.git opencv_contrib
+          git clone --depth 1 --branch 3.4.0 https://gitlab.com/libeigen/eigen.git eigen
 
       # ANDROID_NDK env var is pre-set on GitHub ubuntu runners (NDK 27.x); static libs land in install/sdk/native/staticlibs/arm64-v8a/
       - name: Configure
@@ -300,7 +324,9 @@ jobs:
             -DWITH_OPENCL=OFF \
             -DWITH_IPP=OFF \
             -DWITH_ITT=OFF \
-            -DWITH_EIGEN=OFF \
+            -DWITH_EIGEN=ON \
+            -DEIGEN_INCLUDE_PATH:PATH=$GITHUB_WORKSPACE/eigen \
+            -DCMAKE_DISABLE_FIND_PACKAGE_Eigen3=ON \
             -DWITH_LAPACK=OFF \
             -DWITH_TBB=OFF \
             -DWITH_OPENMP=OFF \

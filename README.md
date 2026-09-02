@@ -27,7 +27,8 @@ ships inside `objdetect`).
 
 Excluded: `imgcodecs`, `videoio`, `highgui`, `dnn`, `ptcloud`, `ts`, all
 bindings (Java/Python/ObjC/JS), `world`. Also off: CUDA, OpenCL, IPP, ITT,
-Eigen, Lapack, TBB, protobuf, and all bundled codec libraries.
+Lapack, TBB, protobuf, and all bundled codec libraries. Eigen 3.4.0 is
+vendored and enabled (`WITH_EIGEN=ON`).
 
 ## Usage
 
