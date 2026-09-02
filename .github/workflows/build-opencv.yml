@@ -108,10 +108,12 @@ jobs:
         run: cd install && 7z a -tzip ../opencv-${OPENCV_REF}-windows-x64-${{ matrix.crt }}.zip .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opencv-${{ env.OPENCV_REF }}-windows-x64-${{ matrix.crt }}
           path: opencv-*.zip
+          # archive: false skips the wrapper zip (name: is ignored, artifact is named after the file)
+          archive: false
 
   macos:
     runs-on: macos-15
@@ -163,10 +165,11 @@ jobs:
         run: ditto -c -k --sequesterRsrc --keepParent out/opencv2.xcframework opencv-${OPENCV_REF}-apple-arm64-xcframework.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opencv-${{ env.OPENCV_REF }}-apple-arm64-xcframework
           path: opencv-*-xcframework.zip
+          archive: false
 
   linux:
     runs-on: ubuntu-24.04
@@ -236,10 +239,11 @@ jobs:
         run: cd install && tar czf ../opencv-${OPENCV_REF}-linux-x64.tar.gz .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opencv-${{ env.OPENCV_REF }}-linux-x64
           path: opencv-*.tar.gz
+          archive: false
 
   android:
     runs-on: ubuntu-24.04
@@ -317,10 +321,11 @@ jobs:
         run: cd install && tar czf ../opencv-${OPENCV_REF}-android-arm64-v8a.tar.gz .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opencv-${{ env.OPENCV_REF }}-android-arm64-v8a
           path: opencv-*.tar.gz
+          archive: false
 
   release:
     name: Publish GitHub Release
@@ -331,7 +336,7 @@ jobs:
       contents: write
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
