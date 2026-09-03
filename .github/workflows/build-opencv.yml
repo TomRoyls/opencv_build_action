@@ -21,8 +21,8 @@ concurrency:
 
 env:
   OPENCV_REF: ${{ inputs.opencv_ref || github.ref_name || '5.0.0' }}
-  # 5.0.0 module names. geometry+stereo are auto-deps of imgproc/calib but listed explicitly; ml+xphoto come from opencv_contrib (aruco ships inside objdetect)
-  BUILD_MODULES: "core,imgproc,flann,geometry,features,calib,stereo,photo,stitching,video,objdetect,ml,xphoto"
+  # 5.0.0 module names. geometry+stereo are auto-deps of imgproc/calib but listed explicitly; ml+xphoto+xfeatures2d come from opencv_contrib (aruco ships inside objdetect, AKAZE inside xfeatures2d)
+  BUILD_MODULES: "core,imgproc,flann,geometry,features,calib,stereo,photo,stitching,video,objdetect,ml,xphoto,xfeatures2d"
 
 jobs:
   windows:
@@ -145,6 +145,7 @@ jobs:
         run: |
           cp -R opencv_contrib/modules/ml opencv/modules/ml
           cp -R opencv_contrib/modules/xphoto opencv/modules/xphoto
+          cp -R opencv_contrib/modules/xfeatures2d opencv/modules/xfeatures2d
 
       # build_xcframework.py phase 3 unconditionally copytrees <platform>/docs; --without objc skips doc generation
       - name: Pre-create docs dirs for xcframework script
